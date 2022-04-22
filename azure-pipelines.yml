@@ -1,0 +1,57 @@
+stages:
+- stage: validate
+  jobs: 
+  - job: validate
+    continueOnError: false
+    steps:
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: 'latest'
+    - task: TerraformTaskV2@2
+      displayName: 'init' 
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        backendServiceArm: 'terraform-spn'
+        backendAzureRmResourceGroupName: 'terraform-task1'
+        backendAzureRmStorageAccountName: 'terraformstgact042022'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'terraform.tfstate'
+    - task: TerraformTaskV2@2
+      displayName: 'validate'
+      inputs:
+        provider: 'azurerm'
+        command: 'validate'
+- stage: deploy
+  jobs: 
+  - deployment: deploy-terrafrom
+    continueOnError: false
+    environment: 'dev'
+    strategy:
+     runOnce:
+       deploy:
+         steps:
+           - checkout: self
+           - task: TerraformInstaller@0
+             displayName: 'install'
+             inputs:
+               terraformVersion: 'latest'
+           - task: TerraformTaskV2@2
+             inputs:
+               provider: 'azurerm'
+               command: 'init'
+               backendServiceArm: 'terraform-spn'
+               backendAzureRmResourceGroupName: 'terraform-task1'
+               backendAzureRmStorageAccountName: 'terraformstgact042022'
+               backendAzureRmContainerName: 'tfstate'
+               backendAzureRmKey: 'terraform.tfstate'
+           - task: TerraformTaskV2@2
+             inputs:
+               provider: 'azurerm'
+               command: 'plan'
+               environmentServiceNameAzureRM: 'terraform-spn'
+           - task: TerraformTaskV2@2
+             inputs:
+               provider: 'azurerm'
+               command: 'apply'
+               environmentServiceNameAzureRM: 'terraform-spn'
